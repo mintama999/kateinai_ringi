@@ -1,0 +1,256 @@
+import React, { useState, useEffect } from 'react';
+import { AlertCircle, CheckCircle, Clock, PlusCircle, Trash2, Lock } from 'lucide-react';
+
+const PurchaseApprovalSystem = () => {
+  // 初期状態のサンプルデータ
+  const initialItems = [
+    { id: 1, item: 'ノートパソコン', requester: '夫', price: 150000, status: 'pending', date: '2025-03-05' },
+    { id: 2, item: '掃除機', requester: '妻', price: 65000, status: 'approved', date: '2025-03-01' },
+    { id: 3, item: 'カメラ', requester: '夫', price: 120000, status: 'rejected', date: '2025-02-28' }
+  ];
+
+  // 認証状態の管理
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const authState = localStorage.getItem('purchaseApprovalAuth');
+    return authState === 'true';
+  });
+  
+  const [passphrase, setPassphrase] = useState('');
+  const [error, setError] = useState('');
+  
+  // 合言葉検証
+  const validatePassphrase = () => {
+    if (passphrase === '240825') {
+      setIsAuthenticated(true);
+      localStorage.setItem('purchaseApprovalAuth', 'true');
+      setError('');
+    } else {
+      setError('合言葉が正しくありません');
+    }
+  };
+  
+  // ログアウト機能
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('purchaseApprovalAuth');
+  };
+
+  // ローカルストレージからデータを取得するか、初期データを使用
+  const [items, setItems] = useState(() => {
+    const savedItems = localStorage.getItem('purchaseApprovalItems');
+    return savedItems ? JSON.parse(savedItems) : initialItems;
+  });
+  
+  // 新しいアイテムの状態
+  const [newItem, setNewItem] = useState({ item: '', requester: '夫', price: '', status: 'pending', date: getToday() });
+  
+  // フィルター状態
+  const [filter, setFilter] = useState('all');
+  
+  // 今日の日付を取得する関数
+  function getToday() {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+
+  // アイテムの変更時にローカルストレージに保存
+  useEffect(() => {
+    localStorage.setItem('purchaseApprovalItems', JSON.stringify(items));
+  }, [items]);
+
+  // 新しいアイテムを追加
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    if (!newItem.item || !newItem.price) return;
+    
+    const id = items.length > 0 ? Math.max(...items.map(item => item.id)) + 1 : 1;
+    setItems([...items, { ...newItem, id, price: Number(newItem.price) }]);
+    setNewItem({ item: '', requester: '夫', price: '', status: 'pending', date: getToday() });
+  };
+
+  // アイテムのステータスを変更
+  const handleStatusChange = (id, newStatus) => {
+    setItems(items.map(item => 
+      item.id === id ? { ...item, status: newStatus } : item
+    ));
+  };
+
+  // アイテムを削除
+  const handleDeleteItem = (id) => {
+    setItems(items.filter(item => item.id !== id));
+  };
+
+  // フィルタリングされたアイテム
+  const filteredItems = filter === 'all' 
+    ? items 
+    : items.filter(item => item.status === filter);
+
+  // ステータスに基づく色とアイコンを取得
+  const getStatusInfo = (status) => {
+    switch(status) {
+      case 'pending':
+        return { color: 'bg-yellow-100 text-yellow-800', icon: <Clock className="w-4 h-4" /> };
+      case 'approved':
+        return { color: 'bg-green-100 text-green-800', icon: <CheckCircle className="w-4 h-4" /> };
+      case 'rejected':
+        return { color: 'bg-red-100 text-red-800', icon: <AlertCircle className="w-4 h-4" /> };
+      default:
+        return { color: 'bg-gray-100', icon: null };
+    }
+  };
+
+  // 認証画面のレンダリング
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+          <div className="flex justify-center mb-8">
+            <Lock className="h-16 w-16 text-blue-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-center text-gray-700 mb-6">夫婦間購入承認システム</h1>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2">合言葉を入力してください</label>
+            <input
+              type="password"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && validatePassphrase()}
+              placeholder="合言葉"
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          <div className="flex items-center justify-center">
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              onClick={validatePassphrase}
+            >
+              ログイン
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // メインアプリケーションのレンダリング
+  return (
+    <div className="max-w-4xl mx-auto p-4 bg-white rounded-lg shadow">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-center">夫婦間購入承認システム</h1>
+        <button 
+          onClick={handleLogout}
+          className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+        >
+          ログアウト
+        </button>
+      </div>
+      
+      {/* 申請フォーム */}
+      <div className="mb-8 p-4 border rounded-lg bg-gray-50">
+        <h2 className="text-xl font-semibold mb-4">新しい購入申請</h2>
+        <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">購入したいもの</label>
+            <input
+              type="text"
+              value={newItem.item}
+              onChange={(e) => setNewItem({...newItem, item: e.target.value})}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="商品名"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">申請者</label>
+            <select
+              value={newItem.requester}
+              onChange={(e) => setNewItem({...newItem, requester: e.target.value})}
+              className="w-full px-3 py-2 border rounded-md"
+            >
+              <option value="夫">夫</option>
+              <option value="妻">妻</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">金額（円）</label>
+            <input
+              type="number"
+              value={newItem.price}
+              onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="例: 50000"
+              min="1"
+              required
+            />
+          </div>
+          <div className="flex items-end">
+            <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center">
+              <PlusCircle className="w-4 h-4 mr-1" /> 申請する
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      {/* フィルターボタン */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-4 py-2 rounded-md ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+        >
+          すべて
+        </button>
+        <button
+          onClick={() => setFilter('pending')}
+          className={`px-4 py-2 rounded-md ${filter === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+        >
+          承認待ち
+        </button>
+        <button
+          onClick={() => setFilter('approved')}
+          className={`px-4 py-2 rounded-md ${filter === 'approved' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+        >
+          承認済み
+        </button>
+        <button
+          onClick={() => setFilter('rejected')}
+          className={`px-4 py-2 rounded-md ${filter === 'rejected' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+        >
+          却下
+        </button>
+      </div>
+      
+      {/* 申請リスト */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品名</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">申請者</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金額（円）</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-4 py-4 text-center text-gray-500">
+                  該当する申請がありません
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item) => {
+                const statusInfo = getStatusInfo(item.status);
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 whitespace-nowrap">{item.date}</td>
+                    <td className="px-4 py-4 whitespace-nowrap font-medium">{item.item}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{item.requester}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{item.price.toLocaleString()}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                        {statusInfo.icon}
+                        <span className="ml-1">
+                          {item.status === 'pending' ? '承認
