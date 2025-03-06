@@ -1,1 +1,0 @@
-# kateinai_ringi
