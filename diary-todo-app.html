@@ -159,6 +159,25 @@
             margin-left: 10px;
             font-size: 0.8em;
         }
+
+        /* 追加：日付指定移動用のスタイル */
+        .date-jump-control {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #eaf2f8;
+            border-radius: 4px;
+        }
+
+        .date-jump-control input {
+            margin: 0 10px;
+            width: auto;
+        }
+
+        .date-jump-control button {
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -175,6 +194,13 @@
                 <button onclick="changeDate(-1)">前日</button>
                 <h2 id="current-date"></h2>
                 <button onclick="changeDate(1)">翌日</button>
+            </div>
+
+            <!-- 追加：特定の日付に移動するコントロール -->
+            <div class="date-jump-control">
+                <label for="jump-to-date">日付を指定して移動：</label>
+                <input type="date" id="jump-to-date">
+                <button onclick="jumpToDate()">移動</button>
             </div>
 
             <form id="diary-form">
@@ -287,6 +313,9 @@
                 currentDate = new Date(this.value);
                 updateDiaryDate();
             });
+            
+            // 日付指定移動用の日付ピッカーを今日の日付に設定
+            document.getElementById('jump-to-date').value = new Date().toISOString().split('T')[0];
         });
 
         // 日付ピッカーの初期設定
@@ -319,6 +348,9 @@
             
             document.getElementById('diary-date').value = dateStr;
             
+            // 日付指定移動用の日付ピッカーも更新
+            document.getElementById('jump-to-date').value = dateStr;
+            
             // 日記データと関連するTodoを読み込み
             loadDiaryData();
         }
@@ -327,6 +359,17 @@
         function changeDate(days) {
             currentDate.setDate(currentDate.getDate() + days);
             updateDiaryDate();
+        }
+        
+        // 追加：特定の日付に移動する機能
+        function jumpToDate() {
+            const jumpDate = document.getElementById('jump-to-date').value;
+            if (jumpDate) {
+                currentDate = new Date(jumpDate);
+                updateDiaryDate();
+            } else {
+                alert('日付を選択してください。');
+            }
         }
 
         // 日記データの保存
