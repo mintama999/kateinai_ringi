@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日記とTodo管理</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .mood-1 { color: #e74c3c; } /* 悪い */
+        .mood-2 { color: #f39c12; } /* やや悪い */
+        .mood-3 { color: #95a5a6; } /* 普通 */
+        .mood-4 { color: #3498db; } /* 良い */
+        .mood-5 { color: #2ecc71; } /* とても良い */
+
+        .priority-high { background-color: #ffebee; }
+        .priority-medium { background-color: #fff8e1; }
+        .priority-low { background-color: #f1f8e9; }
+
+        .completed { text-decoration: line-through; color: #95a5a6; }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .date-navigation {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .date-navigation button {
+            background-color: #ddd;
+            color: #333;
+            margin: 0 10px;
+        }
+
+        .todo-list-in-diary {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .filter-controls {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .date-with-day {
+            font-weight: normal;
+            margin-left: 10px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <h1>日記とTodo管理</h1>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('diary')">日記</button>
+        <button class="tab" onclick="showTab('todo')">Todo</button>
+    </div>
+
+    <div id="diary-tab" class="tab-content active">
+        <div class="panel">
+            <div class="date-navigation">
+                <button onclick="changeDate(-1)">前日</button>
+                <h2 id="current-date"></h2>
+                <button onclick="changeDate(1)">翌日</button>
+            </div>
+
+            <form id="diary-form">
+                <div class="form-group">
+                    <label for="diary-date">日付</label>
+                    <input type="date" id="diary-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="diary-mood">気分</label>
+                    <select id="diary-mood">
+                        <option value="1">悪い</option>
+                        <option value="2">やや悪い</option>
+                        <option value="3" selected>普通</option>
+                        <option value="4">良い</option>
+                        <option value="5">とても良い</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="diary-work">業務内容</label>
+                    <textarea id="diary-work"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="diary-free">フリースペース</label>
+                    <textarea id="diary-free"></textarea>
+                </div>
+                <button type="submit">保存</button>
+            </form>
+
+            <div class="todo-list-in-diary">
+                <h3>未完了のタスク</h3>
+                <div id="diary-todos"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="todo-tab" class="tab-content">
+        <div class="panel">
+            <h2>Todoリスト</h2>
+            
+            <form id="todo-form">
+                <div class="form-group">
+                    <label for="todo-start-date">開始日</label>
+                    <input type="date" id="todo-start-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="todo-end-date">実施期限</label>
+                    <input type="date" id="todo-end-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="todo-priority">重要度</label>
+                    <select id="todo-priority">
+                        <option value="high">高</option>
+                        <option value="medium" selected>中</option>
+                        <option value="low">低</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="todo-content">タスク内容</label>
+                    <textarea id="todo-content" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="todo-status">実施状況</label>
+                    <select id="todo-status">
+                        <option value="not-started">未着手</option>
+                        <option value="in-progress">進行中</option>
+                        <option value="completed">完了</option>
+                    </select>
+                </div>
+                <button type="submit">保存</button>
+            </form>
+
+            <div class="filter-controls">
+                <select id="filter-status">
+                    <option value="all">すべてのタスク</option>
+                    <option value="not-started">未着手</option>
+                    <option value="in-progress">進行中</option>
+                    <option value="completed">完了</option>
+                </select>
+                <button onclick="filterTodos()">フィルター</button>
+            </div>
+
+            <div id="todo-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // 現在の日付を設定
+        let currentDate = new Date();
+        
+        // アプリケーション初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDatePickers();
+            updateDiaryDate();
+            loadDiaryData();
+            renderTodoList();
+            
+            // フォームのサブミットイベントを設定
+            document.getElementById('diary-form').addEventListener('submit', function(e) {
+                e.preventDefault(); // フォームのデフォルト送信を防止
+                saveDiaryEntry();
+            });
+            
+            document.getElementById('todo-form').addEventListener('submit', function(e) {
+                e.preventDefault(); // フォームのデフォルト送信を防止
+                saveTodoItem();
+            });
+            
+            // 日付変更時のイベントリスナー
+            document.getElementById('diary-date').addEventListener('change', function() {
+                currentDate = new Date(this.value);
+                updateDiaryDate();
+            });
+        });
+
+        // 日付ピッカーの初期設定
+        function setupDatePickers() {
+            const diaryDateInput = document.getElementById('diary-date');
+            const todoStartDateInput = document.getElementById('todo-start-date');
+            const todoEndDateInput = document.getElementById('todo-end-date');
+            
+            const today = new Date().toISOString().split('T')[0];
+            diaryDateInput.value = today;
+            todoStartDateInput.value = today;
+            todoEndDateInput.value = today;
+        }
+
+        // 曜日の取得
+        function getDayOfWeek(dateString) {
+            const date = new Date(dateString);
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            return days[date.getDay()];
+        }
+
+        // 現在の日記日付を更新
+        function updateDiaryDate() {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const dayOfWeek = getDayOfWeek(dateStr);
+            
+            document.getElementById('current-date').innerHTML = 
+                `${currentDate.toLocaleDateString('ja-JP', options)} <span class="date-with-day">(${dayOfWeek}曜日)</span>`;
+            
+            document.getElementById('diary-date').value = dateStr;
+            
+            // 日記データと関連するTodoを読み込み
+            loadDiaryData();
+        }
+
+        // 日付を変更
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            updateDiaryDate();
+        }
+
+        // 日記データの保存
+        function saveDiaryEntry() {
+            const date = document.getElementById('diary-date').value;
+            const entry = {
+                date: date,
+                mood: document.getElementById('diary-mood').value,
+                work: document.getElementById('diary-work').value,
+                free: document.getElementById('diary-free').value
+            };
+            
+            // ローカルストレージから既存の日記を取得
+            let diaries = JSON.parse(localStorage.getItem('diaries')) || {};
+            
+            // 日付をキーとして日記を保存
+            diaries[date] = entry;
+            localStorage.setItem('diaries', JSON.stringify(diaries));
+            
+            alert('日記を保存しました。');
+        }
+
+        // 日記データの読み込み
+        function loadDiaryData() {
+            const date = document.getElementById('diary-date').value;
+            const diaries = JSON.parse(localStorage.getItem('diaries')) || {};
+            const entry = diaries[date];
+            
+            if (entry) {
+                document.getElementById('diary-mood').value = entry.mood;
+                document.getElementById('diary-work').value = entry.work;
+                document.getElementById('diary-free').value = entry.free;
+            } else {
+                document.getElementById('diary-work').value = '';
+                document.getElementById('diary-free').value = '';
+                document.getElementById('diary-mood').value = '3';
+            }
+            
+            // 関連するTodoを表示
+            renderTodosForDiary(date);
+        }
+
+        // Todoアイテムの保存
+        function saveTodoItem() {
+            const id = Date.now().toString(); // 一意のIDを生成
+            const todo = {
+                id: id,
+                startDate: document.getElementById('todo-start-date').value,
+                endDate: document.getElementById('todo-end-date').value,
+                priority: document.getElementById('todo-priority').value,
+                content: document.getElementById('todo-content').value,
+                status: document.getElementById('todo-status').value
+            };
+            
+            // ローカルストレージから既存のTodoを取得
+            let todos = JSON.parse(localStorage.getItem('todos')) || [];
+            
+            // 新しいTodoを追加
+            todos.push(todo);
+            localStorage.setItem('todos', JSON.stringify(todos));
+            
+            // フォームをリセット
+            document.getElementById('todo-form').reset();
+            setupDatePickers();
+            
+            // Todo一覧を更新
+            renderTodoList();
+            
+            alert('Todoを保存しました。');
+        }
+
+        // Todoリストの表示
+        function renderTodoList() {
+            const todos = JSON.parse(localStorage.getItem('todos')) || [];
+            const statusFilter = document.getElementById('filter-status').value;
+            
+            const filteredTodos = statusFilter === 'all' 
+                ? todos 
+                : todos.filter(todo => todo.status === statusFilter);
+            
+            if (filteredTodos.length === 0) {
+                document.getElementById('todo-list').innerHTML = '<p>タスクがありません</p>';
+                return;
+            }
+            
+            let html = '<table><tr><th>開始日</th><th>期限</th><th>重要度</th><th>内容</th><th>状態</th><th>操作</th></tr>';
+            
+            filteredTodos.forEach(todo => {
+                const priorityClass = `priority-${todo.priority}`;
+                const completedClass = todo.status === 'completed' ? 'completed' : '';
+                
+                html += `
+                <tr class="${priorityClass}">
+                    <td>${formatDate(todo.startDate)}</td>
+                    <td>${formatDate(todo.endDate)}</td>
+                    <td>${getPriorityText(todo.priority)}</td>
+                    <td class="${completedClass}">${todo.content}</td>
+                    <td>${getStatusText(todo.status)}</td>
+                    <td>
+                        <button type="button" onclick="editTodo('${todo.id}')">編集</button>
+                        <button type="button" onclick="deleteTodo('${todo.id}')">削除</button>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('todo-list').innerHTML = html;
+        }
+
+        // 日記ページにその日に関連するTodoを表示
+        function renderTodosForDiary(date) {
+            const todos = JSON.parse(localStorage.getItem('todos')) || [];
+            
+            // 未完了で、かつ指定日に関連するTodoを抽出
+            const relevantTodos = todos.filter(todo => {
+                return (todo.status !== 'completed' && 
+                        new Date(todo.startDate) <= new Date(date) && 
+                        new Date(todo.endDate) >= new Date(date));
+            });
+            
+            if (relevantTodos.length === 0) {
+                document.getElementById('diary-todos').innerHTML = '<p>該当するタスクはありません</p>';
+                return;
+            }
+            
+            let html = '<table><tr><th>期限</th><th>重要度</th><th>内容</th><th>状態</th></tr>';
+            
+            relevantTodos.forEach(todo => {
+                const priorityClass = `priority-${todo.priority}`;
+                
+                html += `
+                <tr class="${priorityClass}">
+                    <td>${formatDate(todo.endDate)}</td>
+                    <td>${getPriorityText(todo.priority)}</td>
+                    <td>${todo.content}</td>
+                    <td>${getStatusText(todo.status)}</td>
+                </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('diary-todos').innerHTML = html;
+        }
+
+        // Todoのフィルタリング
+        function filterTodos() {
+            renderTodoList();
+        }
+
+        // Todoの編集
+        function editTodo(id) {
+            const todos = JSON.parse(localStorage.getItem('todos')) || [];
+            const todo = todos.find(todo => todo.id === id);
+            
+            if (!todo) return;
+            
+            document.getElementById('todo-start-date').value = todo.startDate;
+            document.getElementById('todo-end-date').value = todo.endDate;
+            document.getElementById('todo-priority').value = todo.priority;
+            document.getElementById('todo-content').value = todo.content;
+            document.getElementById('todo-status').value = todo.status;
+            
+            // 既存のTodoを削除
+            deleteTodo(id, false);
+            
+            // Todoタブにフォーカス
+            showTab('todo');
+        }
+
+        // Todoの削除
+        function deleteTodo(id, showConfirm = true) {
+            if (showConfirm && !confirm('このタスクを削除してもよろしいですか？')) {
+                return;
+            }
+            
+            let todos = JSON.parse(localStorage.getItem('todos')) || [];
+            todos = todos.filter(todo => todo.id !== id);
+            localStorage.setItem('todos', JSON.stringify(todos));
+            
+            renderTodoList();
+            renderTodosForDiary(document.getElementById('diary-date').value);
+        }
+
+        // タブ切り替え
+        function showTab(tabName) {
+            // すべてのタブとコンテンツを非アクティブにする
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 選択されたタブとコンテンツをアクティブにする
+            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // 日付のフォーマット
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const dayOfWeek = getDayOfWeek(dateString);
+            return `${date.toLocaleDateString('ja-JP')}(${dayOfWeek})`;
+        }
+
+        // 重要度のテキスト取得
+        function getPriorityText(priority) {
+            const priorities = {
+                'high': '高',
+                'medium': '中',
+                'low': '低'
+            };
+            return priorities[priority] || priority;
+        }
+
+        // 状態のテキスト取得
+        function getStatusText(status) {
+            const statuses = {
+                'not-started': '未着手',
+                'in-progress': '進行中',
+                'completed': '完了'
+            };
+            return statuses[status] || status;
+        }
+    </script>
+</body>
+</html>
